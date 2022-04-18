@@ -1,0 +1,166 @@
+---
+title: "Machine Learning Assingment 5 Nikesh Sapkota"
+output:
+  html_document:
+    df_print: paged
+date: '2022-04-17'
+---
+---
+title: "Assignment 5 Nikesh Sapkota"
+
+---
+ Hierarchical Clustering using Cereals dataset
+ 
+```{r}
+#Importing dataset
+
+library(readr)
+library(tidyverse)
+library(cluster)
+library(caret)
+library(dendextend)
+library(factoextra)
+library(RColorBrewer)
+
+Cereals <- read_csv("Cereals.csv")
+View(Cereals)
+
+
+```
+
+```{r}
+summary(Cereals)
+```
+
+ 
+The dataset Cereals.csv includes nutritional information, store display, 
+and consumer ratings for 77 breakfast cereals. 
+
+Data Preprocessing. Remove all cereals with missing values. 
+```{r}
+colSums(is.na(Cereals))
+```
+
+
+```{r}
+Cereals_data <- na.omit(Cereals)
+```
+
+
+```{r}
+Cereals_num <- Cereals_data %>% select_if(is.numeric)
+
+head(Cereals_num)
+scaled_cereals <- as.data.frame(scale(Cereals_num))
+```
+
+1. Apply hierarchical clustering to the data using Euclidean distance to the 
+normalized measurements. Use Agnes to compare the clustering from  single 
+linkage, complete linkage, average linkage, and Ward. Choose the best method.
+
+```{r}
+methods <- c( "average", "single", "complete", "ward")
+
+names(methods) <- c( "average", "single", "complete", "ward")
+
+linkage<- function(x) { agnes(scaled_cereals, metric = "euclidean", 
+                                     method = x)$ac}
+
+map_dbl(methods , linkage)
+```
+2. How many clusters would you choose?
+
+```{r}
+Hierarchical_cereals <- agnes(scaled_cereals, method = "ward")
+
+pltree(Hierarchical_cereals, cex = 0.7, hang = -1, main = "Dendrogram of Agnes")
+```
+```{r}
+plot(as.dendrogram(Hierarchical_cereals))
+abline(h = 11.7, lty = 2)
+```
+
+```{r}
+pltree(Hierarchical_cereals, cex = 0.7, hang = -1, main = "Dendrogram of Agnes")
+
+rect.hclust(Hierarchical_cereals, k = 5, border = 2:5)
+```
+The optimal number of clusters is determined using hierarchical clustering. 
+The optimal number of clusters can be determined by examining the greatest 
+height difference. As a result of the above analysis, the optimal number of 
+clusters is "k = 5".
+
+3. The elementary public schools would like to choose a set of cereals to 
+include in their daily cafeterias. Every day a different cereal is offered, 
+but all cereals should support a healthy diet. For this goal, you are requested 
+to find a cluster of “healthy cereals.” 
+
+```{r}
+
+cluster_assignment <- cutree(Hierarchical_cereals, k=5)
+cereals_clustered <- mutate(scaled_cereals, cluster = cluster_assignment)
+
+split_data <- split(cereals_clustered, cereals_clustered$cluster)
+split_means <- lapply(split_data, colMeans)
+(centroids <- do.call(rbind, split_means))
+```
+```{r}
+Hierarchical_palette <-
+  colorRampPalette(rev(brewer.pal(9, 'Greens')), space = 'Lab')
+data.frame(centroids) %>% gather("features", "values",-cluster) %>%
+  ggplot(aes(
+    x = factor(cluster),
+    y = features,
+    fill = values
+  )) + 
+  geom_tile() + theme_classic() +
+  theme(
+    axis.line = element_blank(),
+    legend.position = "top",
+    legend.justification = "left",
+    plot.title = element_text(hjust = 0.5),
+    legend.title = element_blank(),
+    legend.key.width = unit(4.5, "cm")
+  ) +
+  scale_x_discrete(expand = c(0, 0)) +
+  scale_fill_gradientn(colours = Hierarchical_palette(100)) +
+  labs(title = "Cluster Characteristics",
+       x = "Clusters",
+       y = "Features",
+       fill = "Centroids")
+```
+From the graph above, we can see that each cluster pattern is distinct. 
+The analysis for each of the five clusters may be seen below.
+
+- Cluster 1 (Bran Cereals): Cereals in Cluster 1 are "rich in vitamins, protein, 
+potassium, fibers, and moderate vitamins," have "few carbohydrates, sugar, and 
+calories," and have a "high rating and good shelf life," among other things.
+
+- Cluster2 (Hot Cereals): Cereals in Cluster 2 include "excellent vitamins, 
+protein, potassium, fibre, and calories," but "high sugar, fat, and weight."
+
+- Cluster3 (Sugary Cereals): Cereals in Cluster 3 are "heavy in sugar, sodium, 
+carbohydrate, and fat," as well as "poor in vitamins, protein, potassium, and 
+fiber" when compared to other clusters.
+
+- Cluster4 (Organic Cereals): Cereals are "rich in all components," but also 
+"heavy in sodium and carbs" when compared to other clusters.
+
+- Cluster5 (Whole Grain Cereals): Cereals in Cluster5 are "low in sodium and 
+sugars" in comparison to other clusters.
+
+Conclus
+
+
+There are certain grains that are superior to others. Only a few cereals are 
+promoted exclusively for children, and some of them contain up to 50% sugar. 
+The packaging of these products can also be deceitful because it emphasizes 
+only the positive aspects of the product, such as added fiber or essential 
+vitamins. Healthy cereals, on the other hand, are free of sugar and come in a 
+variety of colors and shapes. According to studies, less sugar, salt, and fiber 
+are all beneficial to both children and adults. We may deduce that cluster1 is 
+favorable to children based on the prior cluster analysis and data. As a result, 
+this can be suggested for daily lunches in elementary schools. The data must 
+also be standardized such that each variable has the same scale. The model may 
+be skewed toward the variables with greater magnitudes if the variables' scales 
+aren't the same.
